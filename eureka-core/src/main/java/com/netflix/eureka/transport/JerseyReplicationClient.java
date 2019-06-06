@@ -6,6 +6,8 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.Collection;
+import java.util.Collections;
 
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.appinfo.InstanceInfo.InstanceStatus;
@@ -16,6 +18,7 @@ import com.netflix.discovery.shared.transport.jersey.EurekaJerseyClient;
 import com.netflix.discovery.shared.transport.jersey.EurekaJerseyClientImpl.EurekaJerseyClientBuilder;
 import com.netflix.eureka.EurekaServerConfig;
 import com.netflix.eureka.EurekaServerIdentity;
+import com.netflix.eureka.cluster.AbstractReplicationClientOptionalArgs;
 import com.netflix.eureka.cluster.DynamicGZIPContentEncodingFilter;
 import com.netflix.eureka.cluster.HttpReplicationClient;
 import com.netflix.eureka.cluster.PeerEurekaNode;
@@ -26,6 +29,7 @@ import com.netflix.eureka.resources.ServerCodecs;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.WebResource.Builder;
+import com.sun.jersey.api.client.filter.ClientFilter;
 import com.sun.jersey.client.apache4.ApacheHttpClient4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,7 +136,7 @@ public class JerseyReplicationClient extends AbstractJerseyEurekaHttpClient impl
         jerseyClient.destroyResources();
     }
 
-    public static JerseyReplicationClient createReplicationClient(EurekaServerConfig config, ServerCodecs serverCodecs, String serviceUrl) {
+    public static JerseyReplicationClient createReplicationClient(EurekaServerConfig config, ServerCodecs serverCodecs, String serviceUrl, AbstractReplicationClientOptionalArgs args) {
         String name = JerseyReplicationClient.class.getSimpleName() + ": " + serviceUrl + "apps/: ";
 
         EurekaJerseyClient jerseyClient;
@@ -177,6 +181,13 @@ public class JerseyReplicationClient extends AbstractJerseyEurekaHttpClient impl
 
         EurekaServerIdentity identity = new EurekaServerIdentity(ip);
         jerseyApacheClient.addFilter(new EurekaIdentityHeaderFilter(identity));
+
+        Collection<ClientFilter> additionalFilters = args == null
+                ? Collections.emptyList()
+                : args.getAdditionalFilters();
+        if (additionalFilters != null) {
+            additionalFilters.forEach(jerseyApacheClient::addFilter);
+        }
 
         return new JerseyReplicationClient(jerseyClient, serviceUrl);
     }

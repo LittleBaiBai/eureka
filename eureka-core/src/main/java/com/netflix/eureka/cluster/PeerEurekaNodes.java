@@ -18,11 +18,11 @@ import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.EurekaClientConfig;
 import com.netflix.discovery.endpoint.EndpointUtils;
-import com.netflix.discovery.shared.Application;
 import com.netflix.eureka.EurekaServerConfig;
 import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 import com.netflix.eureka.resources.ServerCodecs;
 import com.netflix.eureka.transport.JerseyReplicationClient;
+import com.netflix.eureka.transport.JerseyReplicationClientOptionalArgs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,12 +40,28 @@ public class PeerEurekaNodes {
     protected final EurekaServerConfig serverConfig;
     protected final EurekaClientConfig clientConfig;
     protected final ServerCodecs serverCodecs;
+    private final AbstractReplicationClientOptionalArgs replicationClientOptionalArgs;
     private final ApplicationInfoManager applicationInfoManager;
 
     private volatile List<PeerEurekaNode> peerEurekaNodes = Collections.emptyList();
     private volatile Set<String> peerEurekaNodeUrls = Collections.emptySet();
 
     private ScheduledExecutorService taskExecutor;
+
+    public PeerEurekaNodes(
+            PeerAwareInstanceRegistry registry,
+            EurekaServerConfig serverConfig,
+            EurekaClientConfig clientConfig,
+            ServerCodecs serverCodecs,
+            ApplicationInfoManager applicationInfoManager,
+            AbstractReplicationClientOptionalArgs args) {
+        this.registry = registry;
+        this.serverConfig = serverConfig;
+        this.clientConfig = clientConfig;
+        this.serverCodecs = serverCodecs;
+        this.applicationInfoManager = applicationInfoManager;
+        this.replicationClientOptionalArgs = args;
+    }
 
     @Inject
     public PeerEurekaNodes(
@@ -54,11 +70,7 @@ public class PeerEurekaNodes {
             EurekaClientConfig clientConfig,
             ServerCodecs serverCodecs,
             ApplicationInfoManager applicationInfoManager) {
-        this.registry = registry;
-        this.serverConfig = serverConfig;
-        this.clientConfig = clientConfig;
-        this.serverCodecs = serverCodecs;
-        this.applicationInfoManager = applicationInfoManager;
+        this(registry, serverConfig, clientConfig, serverCodecs, applicationInfoManager, new JerseyReplicationClientOptionalArgs());
     }
 
     public List<PeerEurekaNode> getPeerNodesView() {
@@ -196,7 +208,7 @@ public class PeerEurekaNodes {
     }
 
     protected PeerEurekaNode createPeerEurekaNode(String peerEurekaNodeUrl) {
-        HttpReplicationClient replicationClient = JerseyReplicationClient.createReplicationClient(serverConfig, serverCodecs, peerEurekaNodeUrl);
+        HttpReplicationClient replicationClient = JerseyReplicationClient.createReplicationClient(serverConfig, serverCodecs, peerEurekaNodeUrl, replicationClientOptionalArgs);
         String targetHost = hostFromUrl(peerEurekaNodeUrl);
         if (targetHost == null) {
             targetHost = "host";
